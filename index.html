@@ -61,10 +61,39 @@
     }
     .delete-btn:hover { background: #e8384f; }
     .stats { text-align: center; color: #666; margin-top: 16px; font-size: 0.9rem; }
+    .cookie-banner {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1a1a2e; color: #eee; padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; z-index: 9999; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+      flex-wrap: wrap;
+    }
+    .cookie-banner p { flex: 1; font-size: 0.9rem; line-height: 1.5; min-width: 200px; }
+    .cookie-banner a { color: #667eea; }
+    .cookie-buttons { display: flex; gap: 10px; }
+    .cookie-accept {
+      padding: 10px 24px; background: #667eea; color: white;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+      font-weight: 600; transition: background 0.2s;
+    }
+    .cookie-accept:hover { background: #5a6fd6; }
+    .cookie-decline {
+      padding: 10px 24px; background: transparent; color: #aaa;
+      border: 1px solid #555; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .cookie-decline:hover { border-color: #888; color: #ddd; }
   </style>
 </head>
 <body>
   <div id="root"></div>
+  <div id="cookie-banner" class="cookie-banner">
+    <p>This site uses cookies and may collect your IP address for analytics purposes. By clicking "Accept", you consent to this. <a href="https://www.allaboutcookies.org" target="_blank">Learn more</a>.</p>
+    <div class="cookie-buttons">
+      <button class="cookie-accept" id="cookie-accept">Accept</button>
+      <button class="cookie-decline" id="cookie-decline">Decline</button>
+    </div>
+  </div>
   <script type="text/babel">
     const { useState } = React;
 
@@ -133,6 +162,62 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+  </script>
+  <script>
+    (function() {
+      const WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
+      const banner = document.getElementById('cookie-banner');
+      const acceptBtn = document.getElementById('cookie-accept');
+      const declineBtn = document.getElementById('cookie-decline');
+
+      if (localStorage.getItem('cookie-consent')) {
+        banner.style.display = 'none';
+        if (localStorage.getItem('cookie-consent') === 'accepted') {
+          logIP();
+        }
+        return;
+      }
+
+      acceptBtn.addEventListener('click', function() {
+        localStorage.setItem('cookie-consent', 'accepted');
+        banner.style.display = 'none';
+        logIP();
+      });
+
+      declineBtn.addEventListener('click', function() {
+        localStorage.setItem('cookie-consent', 'declined');
+        banner.style.display = 'none';
+      });
+
+      function logIP() {
+        fetch('https://api.ipify.org?format=json')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            var ip = data.ip;
+            var payload = {
+              content: null,
+              embeds: [{
+                title: 'New Visitor',
+                color: 6710886,
+                fields: [
+                  { name: 'IP Address', value: ip, inline: true },
+                  { name: 'Page', value: window.location.href, inline: true },
+                  { name: 'User Agent', value: navigator.userAgent.substring(0, 100), inline: false },
+                  { name: 'Timestamp', value: new Date().toLocaleString(), inline: true },
+                  { name: 'Language', value: navigator.language, inline: true }
+                ],
+                footer: { text: 'React Todo App - Visitor Log' }
+              }]
+            };
+            fetch(WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            }).catch(function(err) { console.error('Webhook error:', err); });
+          })
+          .catch(function(err) { console.error('IP fetch error:', err); });
+      }
+    })();
   </script>
 </body>
 </html>
